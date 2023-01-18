@@ -1,4 +1,4 @@
-FROM kutt/kutt
+FROM .
 
 # Install required tools
 RUN apt-get update RUN apt-get install -y curl
