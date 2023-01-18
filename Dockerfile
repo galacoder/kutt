@@ -1,24 +1,15 @@
-FROM node:12-alpine
+FROM kutt/kutt
 
-RUN apk add --update bash
+# Install required tools
+RUN apt-get update RUN apt-get install -y curl
 
-# Setting working directory. 
-WORKDIR /usr/src/app
+# Copy over the docker-compose file
+COPY ./docker-compose.yaml .
 
-# Installing dependencies
-COPY package*.json ./
-RUN npm install
+# Create environment file
+ENV DB_HOST=postgres ENV DB_NAME=kutt ENV DB_USER=user ENV DB_PASSWORD=pass ENV REDIS_HOST=redis
 
-# Copying source files
-COPY . .
+VOLUME redis_data:/data VOLUME postgres_data:/var/lib/postgresql/data
 
-# Give permission to run script
-RUN chmod +x ./wait-for-it.sh
-
-# Build files
-RUN npm run build
-
-EXPOSE 3000
-
-# Running the app
-CMD [ "npm", "start" ]
+# Start the application
+CMD ["./wait-for-it.sh", "postgres:5432", "--", "npm", "start"] EXPOSE 3000
