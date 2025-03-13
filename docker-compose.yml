@@ -1,18 +1,50 @@
 services:
+  server:
+    build:
+      context: .
+    volumes:
+      - custom:/kutt/custom
+    environment:
+      # --- Domain auto-generated for port 3000 ---
+      - SERVICE_FQDN_SERVER_3000
+
+      # --- Reuse the same random DB name & password as Postgres ---
+      - DB_CLIENT=pg
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${SERVICE_USER_PGDB}
+      - DB_PASSWORD=${SERVICE_PASSWORD_PG}
+
+      # --- Redis stuff remains the same ---
+      - REDIS_ENABLED=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
   postgres:
-    image: postgres:latest
-    # Let Coolify create the volumes as needed
+    image: postgres
+    restart: always
+
+    # --- The volumes remain, storing Postgres data locally ---
     volumes:
       - db_data_pg:/var/lib/postgresql/data
+
     environment:
-      # Generate & store a random "DBNAME"
-      - SERVICE_USER_DBNAME
-      # Generate & store a random password
+      # --- Let Coolify generate a random DB name & password ---
+      - SERVICE_USER_PGDB
       - SERVICE_PASSWORD_PG
 
-      # Instruct Postgres to use them
-      - POSTGRES_DB=$SERVICE_USER_DBNAME
-      - POSTGRES_PASSWORD=$SERVICE_PASSWORD_PG
+      # --- Tell Postgres to use the random values ---
+      - POSTGRES_DB=${SERVICE_USER_PGDB}
+      - POSTGRES_PASSWORD=${SERVICE_PASSWORD_PG}
+      # Optional: If you want a random user as well, do this:
+      # - SERVICE_USER_PGUSER
+      # - POSTGRES_USER=${SERVICE_USER_PGUSER}
 
     expose:
       - 5432
@@ -22,20 +54,12 @@ services:
       timeout: 5s
       retries: 5
 
-  server:
-    build:
-      context: .
-    environment:
-      # Reuse the same random DB name & password
-      - DB_NAME=${SERVICE_USER_DBNAME}
-      - DB_PASSWORD=${SERVICE_PASSWORD_PG}
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      # ... other env variables as needed
-
-    depends_on:
-      postgres:
-        condition: service_healthy
+  redis:
+    image: redis:alpine
+    restart: always
+    expose:
+      - 6379
 
 volumes:
   db_data_pg:
+  custom:
