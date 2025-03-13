@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   server:
     build:
@@ -5,41 +7,57 @@ services:
     volumes:
       - custom:/kutt/custom
     environment:
-        DB_CLIENT: mysql2
-        DB_HOST: mariadb
-        DB_PORT: 3306
-        REDIS_ENABLED: true
-        REDIS_HOST: redis
-        REDIS_PORT: 6379
-    ports:
-      - 3000:3000
+      # Let Coolify manage these variables in its UI
+      - DB_CLIENT=${DB_CLIENT:-mysql2}
+      - DB_HOST=${DB_HOST:-mariadb}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME:-kutt_db}
+      - DB_USER=${DB_USER:-kutt_user}
+      - DB_PASSWORD=${DB_PASSWORD:-kutt_password}
+
+      - REDIS_ENABLED=${REDIS_ENABLED:-true}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+
+      # This triggers Coolify to generate a domain for 'server'
+      # pointing to port 3000 at the path "/". 
+      # If you want a path like /kutt, do =/kutt
+      - SERVICE_FQDN_SERVER_3000=/
+      
     depends_on:
       mariadb:
         condition: service_healthy
       redis:
         condition: service_started
+    # No need to expose port 3000 in the final version if you rely on Traefik
+    # but you can keep it for local dev.
+    expose:
+      - 3000
+
   mariadb:
     image: mariadb:10
     restart: always
     healthcheck:
-      test: ['CMD-SHELL', 'mysql ${DB_NAME} --user=${DB_USER} --password=${DB_PASSWORD} --execute "SELECT 1;"']
+      test: ["CMD-SHELL", "mysql ${DB_NAME} --user=${DB_USER} --password=${DB_PASSWORD} --execute \"SELECT 1;\""]
       interval: 3s
       retries: 5
       start_period: 30s
     volumes:
       - db_data_mariadb:/var/lib/mysql
     environment:
-      MARIADB_DATABASE: ${DB_NAME}
-      MARIADB_USER: ${DB_USER}
-      MARIADB_PASSWORD: ${DB_PASSWORD}
-      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
+      - MARIADB_DATABASE=${DB_NAME:-kutt_db}
+      - MARIADB_USER=${DB_USER:-kutt_user}
+      - MARIADB_PASSWORD=${DB_PASSWORD:-kutt_password}
+      - MARIADB_ROOT_PASSWORD=${DB_PASSWORD:-kutt_password}
     expose:
       - 3306
+
   redis:
     image: redis:alpine
     restart: always
     expose:
       - 6379
+
 volumes:
   db_data_mariadb:
   custom:
