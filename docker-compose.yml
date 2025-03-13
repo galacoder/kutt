@@ -1,37 +1,19 @@
 services:
-  server:
-    build:
-      context: .
-    volumes:
-      - custom:/kutt/custom
-    environment:
-      # Tells Coolify/Traefik to generate a domain that routes to port 3000
-      - SERVICE_FQDN_SERVER_3000
-
-      # Your existing environment variables
-      - DB_CLIENT=pg
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - REDIS_ENABLED=true
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-
   postgres:
-    image: postgres
-    restart: always
-    # `user: ${DB_USER}` can remain if you need it. If not, remove it.
-    user: ${DB_USER}
+    image: postgres:latest
+    # Let Coolify create the volumes as needed
     volumes:
       - db_data_pg:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      # Generate & store a random "DBNAME"
+      - SERVICE_USER_DBNAME
+      # Generate & store a random password
+      - SERVICE_PASSWORD_PG
+
+      # Instruct Postgres to use them
+      - POSTGRES_DB=$SERVICE_USER_DBNAME
+      - POSTGRES_PASSWORD=$SERVICE_PASSWORD_PG
+
     expose:
       - 5432
     healthcheck:
@@ -40,12 +22,20 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:alpine
-    restart: always
-    expose:
-      - 6379
+  server:
+    build:
+      context: .
+    environment:
+      # Reuse the same random DB name & password
+      - DB_NAME=${SERVICE_USER_DBNAME}
+      - DB_PASSWORD=${SERVICE_PASSWORD_PG}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      # ... other env variables as needed
+
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   db_data_pg:
-  custom:
