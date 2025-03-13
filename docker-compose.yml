@@ -1,21 +1,29 @@
+version: "3.8"
+
+volumes:
+  db_data_pg:
+  custom:
+
 services:
   server:
     build:
       context: .
     volumes:
       - custom:/kutt/custom
+
     environment:
-      # --- Domain auto-generated for port 3000 ---
+      # Instruct Coolify/Traefik to generate a domain & route to port 3000
       - SERVICE_FQDN_SERVER_3000
 
-      # --- Reuse the same random DB name & password as Postgres ---
+      # Database connection
       - DB_CLIENT=pg
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=${SERVICE_USER_PGDB}
+      # Use the random DB name & password that Postgres will generate
+      - DB_NAME=${SERVICE_USER_DBNAME}
       - DB_PASSWORD=${SERVICE_PASSWORD_PG}
 
-      # --- Redis stuff remains the same ---
+      # Redis connection
       - REDIS_ENABLED=true
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -27,27 +35,26 @@ services:
         condition: service_started
 
   postgres:
-    image: postgres
+    image: postgres:latest
     restart: always
-
-    # --- The volumes remain, storing Postgres data locally ---
     volumes:
       - db_data_pg:/var/lib/postgresql/data
-
     environment:
-      # --- Let Coolify generate a random DB name & password ---
-      - SERVICE_USER_PGDB
+      # Tell Coolify to generate these randomly (visible/editable in the UI)
+      - SERVICE_USER_DBNAME
       - SERVICE_PASSWORD_PG
 
-      # --- Tell Postgres to use the random values ---
-      - POSTGRES_DB=${SERVICE_USER_PGDB}
+      # Map the generated values to Postgres
+      - POSTGRES_DB=${SERVICE_USER_DBNAME}
       - POSTGRES_PASSWORD=${SERVICE_PASSWORD_PG}
-      # Optional: If you want a random user as well, do this:
-      # - SERVICE_USER_PGUSER
-      # - POSTGRES_USER=${SERVICE_USER_PGUSER}
+      # (If you need a random Postgres username, add:
+      #  - SERVICE_USER_PGUSER
+      #  - POSTGRES_USER=${SERVICE_USER_PGUSER}
+      #  and reference it above.)
 
     expose:
       - 5432
+
     healthcheck:
       test: ["CMD", "pg_isready"]
       interval: 10s
@@ -59,7 +66,3 @@ services:
     restart: always
     expose:
       - 6379
-
-volumes:
-  db_data_pg:
-  custom:
