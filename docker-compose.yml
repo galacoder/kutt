@@ -11,19 +11,18 @@ services:
     volumes:
       - custom:/kutt/custom
 
+    # 1) If you want Traefik to auto-generate a domain, you can keep this:
     environment:
-      # Instruct Coolify/Traefik to generate a domain & route to port 3000
       - SERVICE_FQDN_SERVER_3000
 
-      # Database connection
+      # 2) Database connection
       - DB_CLIENT=pg
       - DB_HOST=postgres
       - DB_PORT=5432
-      # Use the random DB name & password that Postgres will generate
-      - DB_NAME=${SERVICE_USER_DBNAME}
-      - DB_PASSWORD=${SERVICE_PASSWORD_PG}
+      - DB_NAME=${DB_NAME}
+      - DB_PASSWORD=${DB_PASSWORD}
 
-      # Redis connection
+      # 3) Redis
       - REDIS_ENABLED=true
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -39,22 +38,14 @@ services:
     restart: always
     volumes:
       - db_data_pg:/var/lib/postgresql/data
-    environment:
-      # Tell Coolify to generate these randomly (visible/editable in the UI)
-      - SERVICE_USER_DBNAME
-      - SERVICE_PASSWORD_PG
 
-      # Map the generated values to Postgres
-      - POSTGRES_DB=${SERVICE_USER_DBNAME}
-      - POSTGRES_PASSWORD=${SERVICE_PASSWORD_PG}
-      # (If you need a random Postgres username, add:
-      #  - SERVICE_USER_PGUSER
-      #  - POSTGRES_USER=${SERVICE_USER_PGUSER}
-      #  and reference it above.)
+    # Instead of referencing “SERVICE_” variables, just read DB_NAME & DB_PASSWORD
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
 
     expose:
       - 5432
-
     healthcheck:
       test: ["CMD", "pg_isready"]
       interval: 10s
